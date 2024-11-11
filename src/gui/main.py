@@ -1,28 +1,75 @@
 import sys
-from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QFormLayout, QLineEdit, QPushButton, QGroupBox, QSpacerItem, QSizePolicy
-)
-from PyQt6.QtCore import Qt
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-import numpy as np
 
-class PIDSimulationApp(QMainWindow):
+import numpy as np
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QApplication,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLineEdit,
+    QMainWindow,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
+    QSplitter,
+    QVBoxLayout,
+    QWidget,
+)
+
+from .plot_canvas import PlotCanvas
+
+MIN_WIDTH_SIDEBAR = 80
+MIN_WIDTH_PLOTCANVAS = 300
+MIN_HEIGHT_MAINWINDOW = 300
+SPLITTER_WIDTH = 50
+
+COMPONENTS_MIN_WIDTH = MIN_WIDTH_SIDEBAR + MIN_WIDTH_PLOTCANVAS
+
+
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Симуляция ПИД-регулятора")
-        self.initUI()
 
-    def initUI(self):
+        self.setMinimumHeight(MIN_HEIGHT_MAINWINDOW)
+        self.setMinimumWidth(COMPONENTS_MIN_WIDTH + SPLITTER_WIDTH)
+        self.init_ui()
+
+    def init_ui(self):
         # Главный виджет и макет
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         main_layout = QHBoxLayout(main_widget)
 
-        # Боковая панель
-        side_panel = QWidget()
-        side_layout = QVBoxLayout(side_panel)
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        main_layout.addWidget(self.splitter)
+
+        self.sidebar = SideBar(self)
+        self.sidebar.setMinimumWidth(MIN_WIDTH_SIDEBAR)
+        self.splitter.addWidget(self.sidebar)
+
+        self.plot_canvas = PlotCanvas(self)
+        self.plot_canvas.setMinimumWidth(MIN_WIDTH_PLOTCANVAS)
+        self.splitter.addWidget(self.plot_canvas)
+
+    def run_simulation(self, kp, ki, kd, heat_flux, initial_temp, rate, sim_time):
+        # Пример симуляции (замените на вашу логику)
+        t = np.linspace(0, sim_time, int(sim_time * 100))
+        temp = initial_temp + heat_flux * t * np.exp(-rate * t)
+
+        # Обновление графика
+        self.plot_canvas.plot(t, temp)
+
+
+class SideBar(QWidget):
+    def __init__(self, main_window):
+        super().__init__()
+        self.main_window = main_window
+        self.init_ui()
+
+    def init_ui(self):
+        side_layout = QVBoxLayout(self)
         side_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Область для коэффициентов ПИД-регулятора
@@ -52,22 +99,14 @@ class PIDSimulationApp(QMainWindow):
         side_layout.addWidget(sim_group)
 
         # Прокладка для размещения кнопки внизу
-        side_layout.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
+        side_layout.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))  # noqa: E501
 
         # Кнопка "Провести симуляцию"
         self.simulate_button = QPushButton("Провести симуляцию")
-        self.simulate_button.clicked.connect(self.run_simulation)
+        self.simulate_button.clicked.connect(self.on_simulate)
         side_layout.addWidget(self.simulate_button)
 
-        # Добавление боковой панели в главный макет
-        main_layout.addWidget(side_panel)
-
-        # Оси matplotlib
-        self.figure = Figure()
-        self.canvas = FigureCanvas(self.figure)
-        main_layout.addWidget(self.canvas)
-
-    def run_simulation(self):
+    def on_simulate(self):
         # Получение значений из полей ввода
         try:
             kp = float(self.kp_input.text())
@@ -78,24 +117,14 @@ class PIDSimulationApp(QMainWindow):
             rate = float(self.rate_input.text())
             sim_time = float(self.sim_time_input.text())
         except ValueError:
-            print("Пожалуйста, введите корректные числовые значения.")
             return
 
-        # Пример симуляции (замените на вашу логику)
-        t = np.linspace(0, sim_time, int(sim_time * 100))
-        temp = initial_temp + heat_flux * t * np.exp(-rate * t)
+        # Запуск симуляции через основное окно
+        self.main_window.run_simulation(kp, ki, kd, heat_flux, initial_temp, rate, sim_time)
 
-        # Очистка и обновление графика
-        self.figure.clear()
-        ax = self.figure.add_subplot(111)
-        ax.plot(t, temp)
-        ax.set_xlabel('Время')
-        ax.set_ylabel('Температура')
-        ax.set_title('Результаты симуляции')
-        self.canvas.draw()
 
 def main():
     app = QApplication(sys.argv)
-    window = PIDSimulationApp()
+    window = MainWindow()
     window.show()
     sys.exit(app.exec())

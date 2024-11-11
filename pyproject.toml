@@ -5,12 +5,12 @@ description = ""
 authors = ["kdavjd <105581554+kdavjd@users.noreply.github.com>"]
 readme = "README.md"
 
+packages = [
+    { include = "gui", from = "src" }
+]
+
 [tool.poetry.scripts]
 pid-sim = "gui.main:main"
-
-[[tool.poetry.packages]]
-include = "gui"
-from = "src"
 
 [tool.poetry.dependencies]
 python = ">=3.12"
@@ -22,9 +22,30 @@ numpy = "^2.1.3"
 plotly = "^5.24.1"
 nbformat = "^5.10.4"
 pyqt6 = "^6.7.1"
+pre-commit = "^4.0.1"
 
 [tool.poetry.dev-dependencies]
 ruff = "^0.7.3"
+
+[tool.ruff]
+src = ["src"]
+exclude = ["*.ipynb", "docs/oven_model.ipynb"]
+line-length = 129
+
+[tool.ruff.lint]
+select = [
+    "A",  # Correctness rules
+    "B",  # Clean code checks (PEP 8, etc.)
+    "C",  # Complexity and readability
+    "E",  # Formatting errors
+    "F",  # Logical errors
+    "I",  # Import ordering
+    "N",  # Naming conventions
+    "Q",  # Security threats
+    "S",  # Security rules
+    "T",  # Type checks
+    "U"   # Other utilities
+]
 
 [build-system]
 requires = ["poetry-core"]
