@@ -1,4 +1,4 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QFormLayout,
     QGroupBox,
@@ -49,15 +49,15 @@ class SimulationParametersWidget(QWidget):
         layout = QFormLayout()
 
         # Поля ввода для параметров симуляции
-        self.heat_flow_input = QLineEdit()
+        self.power_input = QLineEdit()
         self.initial_temp_input = QLineEdit()
-        self.rate_input = QLineEdit()
+        self.final_temp_input = QLineEdit()
         self.sim_time_input = QLineEdit()
 
         # Добавляем поля ввода на форму с соответствующими метками
-        layout.addRow("Тепловой поток:", self.heat_flow_input)
         layout.addRow("Начальная температура:", self.initial_temp_input)
-        layout.addRow("Ставка:", self.rate_input)
+        layout.addRow("Уставка:", self.final_temp_input)
+        layout.addRow("Мощность:", self.power_input)
         layout.addRow("Время симуляции:", self.sim_time_input)
 
         # Устанавливаем форму как основной макет виджета
@@ -65,17 +65,17 @@ class SimulationParametersWidget(QWidget):
 
     def get_values(self):
         try:
-            heat_flow = float(self.heat_flow_input.text())
+            power = float(self.power_input.text())
             initial_temp = float(self.initial_temp_input.text())
-            rate = float(self.rate_input.text())
+            final_temp = float(self.final_temp_input.text())
             sim_time = float(self.sim_time_input.text())
-            return heat_flow, initial_temp, rate, sim_time
+            return power, initial_temp, final_temp, sim_time
         except ValueError:
             return None  # Возвращаем None при ошибке преобразования
 
 
 class SimulateButtonWidget(QWidget):
-    def __init__(self, callback):
+    def __init__(self):
         super().__init__()
 
         # Основной вертикальный макет для размещения кнопки симуляции
@@ -85,9 +85,6 @@ class SimulateButtonWidget(QWidget):
         # Кнопка для запуска симуляции
         self.simulate_button = QPushButton("Провести симуляцию")
 
-        # Подключение кнопки к переданной функции обратного вызова
-        self.simulate_button.clicked.connect(callback)
-
         # Добавляем кнопку на макет
         layout.addWidget(self.simulate_button)
 
@@ -96,6 +93,9 @@ class SimulateButtonWidget(QWidget):
 
 
 class SideBar(QWidget):
+    # Определяем сигнал, который будет излучать собранные данные
+    simulation_data_signal = pyqtSignal(dict)
+
     def __init__(self, main_window):
         super().__init__()
 
@@ -106,10 +106,13 @@ class SideBar(QWidget):
         side_layout = QVBoxLayout(self)
         side_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        # Создаем экземпляры компонентов: виджет коэффициентов PID, параметры симуляции и кнопка
+        # Создаем экземпляры компонентов: виджет коэффициентов PID, параметры симуляции и кнопку
         self.pid_widget = PIDCoefficientsWidget()
         self.sim_params_widget = SimulationParametersWidget()
-        self.sim_button_widget = SimulateButtonWidget(self.on_simulate)
+        self.sim_button_widget = SimulateButtonWidget()
+
+        # Подключаем нажатие кнопки к методу для обработки данных и излучения сигнала
+        self.sim_button_widget.simulate_button.clicked.connect(self.on_simulate)
 
         # Группируем виджет коэффициентов PID в область с заголовком
         pid_group = QGroupBox("Коэффициенты ПИД-регулятора")
@@ -135,9 +138,16 @@ class SideBar(QWidget):
         if sim_params_values is None:
             return  # Завершаем метод при ошибке получения значений
 
-        # Распаковываем все значения для передачи в симуляцию
-        kp, ki, kd = pid_values
-        heat_flux, initial_temp, rate, sim_time = sim_params_values
+        # Формируем словарь с собранными данными
+        data = {
+            "kp": pid_values[0],
+            "ki": pid_values[1],
+            "kd": pid_values[2],
+            "power": sim_params_values[0],
+            "initial_temp": sim_params_values[1],
+            "final_temp": sim_params_values[2],
+            "sim_time": sim_params_values[3],
+        }
 
-        # Запускаем симуляцию, вызывая метод run_simulation в основном окне
-        self.main_window.run_simulation(kp, ki, kd, heat_flux, initial_temp, rate, sim_time)
+        # Излучаем сигнал с данными
+        self.simulation_data_signal.emit(data)
