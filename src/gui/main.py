@@ -1,6 +1,5 @@
 import sys
 
-import numpy as np
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QSplitter, QWidget
 
@@ -41,11 +40,6 @@ class MainWindow(QMainWindow):
         self.plot_canvas.setMinimumWidth(MIN_WIDTH_PLOTCANVAS)
         self.splitter.addWidget(self.plot_canvas)
 
-    def run_simulation(self, kp, ki, kd, heat_flux, initial_temp, rate, sim_time):
-        t = np.linspace(0, sim_time, int(sim_time * 100))
-        temp = initial_temp + heat_flux * t * np.exp(-rate * t)
-        self.plot_canvas.plot(t, temp)
-
 
 def main():
     setup_logger()
@@ -55,6 +49,7 @@ def main():
     simulations = PIDSimulations()
 
     window.sidebar.simulation_data_signal.connect(simulations.simulate)
+    simulations.simulations_data_signal.connect(window.plot_canvas.request_slot)
 
     window.show()
     sys.exit(app.exec())

@@ -68,7 +68,7 @@ class SimulationParametersWidget(QWidget):
             power = float(self.power_input.text())
             initial_temp = float(self.initial_temp_input.text())
             final_temp = float(self.final_temp_input.text())
-            sim_time = float(self.sim_time_input.text())
+            sim_time = int(self.sim_time_input.text())
             return power, initial_temp, final_temp, sim_time
         except ValueError:
             return None  # Возвращаем None при ошибке преобразования
