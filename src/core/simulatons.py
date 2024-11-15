@@ -52,22 +52,47 @@ class PIDSimulations(QObject):
         super().__init__()
         self.logger = logging.getLogger("PIDSimulationsLogger")
 
-    @pyqtSlot(dict)
-    def simulate(self, data: dict):
-        self.logger.info(f"Received data for simulation: {data}")
-        current_temperature = data.get("initial_temp", 0)
-        power = data.get("power", 0)
-        sim_time = data.get("sim_time", 0)
-
-        temperatures = [current_temperature]
-        time_array = list(range(sim_time + 1))
+    def _calculate_oven_curve(self, initial_temp, power, sim_time):
+        current_temperature = initial_temp
+        oven_temperatures = [current_temperature]
 
         amperage = (MAINS_VOLTAGE / OVEN_RESISTANCE) * power / 100
         heat_flow = amperage * MAINS_VOLTAGE * AGG_TIME
-        # Итерация по каждому временному шагу
+
         for _ in range(sim_time):
             new_temperature = get_dt(heat_flow, power, current_temperature, A1, A2, A3, B1, B2)
-            temperatures.append(new_temperature)
-            current_temperature = new_temperature  # Обновляем текущую температуру
+            oven_temperatures.append(new_temperature)
+            current_temperature = new_temperature
+        return oven_temperatures
 
-        self.simulations_data_signal.emit({"temperatures": temperatures, "time": time_array})
+    def _calculate_target_curve(self, initial_temp, final_temperature, heating_rate, sim_time):
+        current_target_temp = initial_temp
+        target_temperatures = [current_target_temp]
+        increment = heating_rate / 60 * AGG_TIME  # Increment step for target temperature
+
+        for _ in range(sim_time):
+            current_target_temp = min(current_target_temp + increment, final_temperature)
+            target_temperatures.append(current_target_temp)
+        return target_temperatures
+
+    @pyqtSlot(dict)
+    def simulate(self, data: dict):
+        self.logger.info(f"Received data for simulation: {data}")
+
+        initial_temp = data.get("initial_temp", 0)
+        final_temperature = data.get("final_temp", 0)
+        heating_rate = data.get("heating_rate", final_temperature - initial_temp)
+        sim_time = data.get("sim_time", 0)
+
+        # задаемся мощностью для отладки
+        power = 20
+
+        time_array = list(range(sim_time + 1))
+        oven_temperatures = self._calculate_oven_curve(initial_temp, power, sim_time)
+        target_temperatures = self._calculate_target_curve(initial_temp, final_temperature, heating_rate, sim_time)
+
+        # Посылаем сигнал для температуры печи
+        self.simulations_data_signal.emit({"x": time_array, "y": oven_temperatures, "label": "oven_temperatures"})
+
+        # Посылаем сигнал для целевой температуры
+        self.simulations_data_signal.emit({"x": time_array, "y": target_temperatures, "label": "target_temperatures"})

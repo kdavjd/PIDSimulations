@@ -49,9 +49,10 @@ class PlotCanvas(QWidget):
     @pyqtSlot(dict)
     def request_slot(self, data: dict):
         self.logger.debug(f"Received data: {data}")
-        x = data.get("time")
-        y = data.get("temperatures")
-        self.plot(x, y)
+        x = data.get("x")
+        y = data.get("y")
+        label = data.get("label")
+        self.plot(x, y, label)
 
     def plot(self, x, y, label="default"):
         """Отображает линию на графике с указанной меткой."""
