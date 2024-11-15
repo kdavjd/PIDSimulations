@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QSizePolicy,
     QSpacerItem,
@@ -22,6 +23,11 @@ class PIDCoefficientsWidget(QWidget):
         self.kp_input = QLineEdit()
         self.ki_input = QLineEdit()
         self.kd_input = QLineEdit()
+
+        # Устанавливаем значения по умолчанию
+        self.kp_input.setText("1")
+        self.ki_input.setText("1")
+        self.kd_input.setText("1")
 
         # Добавляем поля ввода на форму с соответствующими метками
         layout.addRow("Kp:", self.kp_input)
@@ -49,15 +55,21 @@ class SimulationParametersWidget(QWidget):
         layout = QFormLayout()
 
         # Поля ввода для параметров симуляции
-        self.power_input = QLineEdit()
+        self.heating_rate = QLineEdit()
         self.initial_temp_input = QLineEdit()
         self.final_temp_input = QLineEdit()
         self.sim_time_input = QLineEdit()
 
+        # Устанавливаем значения по умолчанию
+        self.initial_temp_input.setText("25")
+        self.final_temp_input.setText("250")
+        self.heating_rate.setText("10")
+        self.sim_time_input.setText("500")
+
         # Добавляем поля ввода на форму с соответствующими метками
         layout.addRow("Начальная температура:", self.initial_temp_input)
         layout.addRow("Уставка:", self.final_temp_input)
-        layout.addRow("Мощность:", self.power_input)
+        layout.addRow("Скорость нагрева:", self.heating_rate)
         layout.addRow("Время симуляции:", self.sim_time_input)
 
         # Устанавливаем форму как основной макет виджета
@@ -65,7 +77,7 @@ class SimulationParametersWidget(QWidget):
 
     def get_values(self):
         try:
-            power = float(self.power_input.text())
+            power = float(self.heating_rate.text())
             initial_temp = float(self.initial_temp_input.text())
             final_temp = float(self.final_temp_input.text())
             sim_time = int(self.sim_time_input.text())
@@ -128,22 +140,29 @@ class SideBar(QWidget):
         side_layout.addWidget(self.sim_button_widget)
 
     def on_simulate(self):
+        # Проверяем заполненность всех полей
+        if not self.check_inputs_filled():
+            QMessageBox.warning(self, "Ошибка", "Все поля должны быть заполнены.")
+            return
+
         # Получаем значения коэффициентов PID
         pid_values = self.pid_widget.get_pid_coeffs_values()
         if pid_values is None:
-            return  # Завершаем метод при ошибке получения значений
+            QMessageBox.warning(self, "Ошибка", "Некорректные значения коэффициентов PID.")
+            return
 
         # Получаем значения параметров симуляции
         sim_params_values = self.sim_params_widget.get_values()
         if sim_params_values is None:
-            return  # Завершаем метод при ошибке получения значений
+            QMessageBox.warning(self, "Ошибка", "Некорректные значения параметров симуляции.")
+            return
 
         # Формируем словарь с собранными данными
         data = {
             "kp": pid_values[0],
             "ki": pid_values[1],
             "kd": pid_values[2],
-            "power": sim_params_values[0],
+            "heating_rate": sim_params_values[0],
             "initial_temp": sim_params_values[1],
             "final_temp": sim_params_values[2],
             "sim_time": sim_params_values[3],
@@ -151,3 +170,16 @@ class SideBar(QWidget):
 
         # Излучаем сигнал с данными
         self.simulation_data_signal.emit(data)
+
+    def check_inputs_filled(self):
+        """Проверяет, заполнены ли все поля ввода."""
+        inputs = [
+            self.pid_widget.kp_input,
+            self.pid_widget.ki_input,
+            self.pid_widget.kd_input,
+            self.sim_params_widget.heating_rate,
+            self.sim_params_widget.initial_temp_input,
+            self.sim_params_widget.final_temp_input,
+            self.sim_params_widget.sim_time_input,
+        ]
+        return all(input_field.text().strip() for input_field in inputs)
