@@ -63,7 +63,7 @@ class PIDSimulations(QObject):
         super().__init__()
         self.logger = logging.getLogger("PIDSimulationsLogger")
 
-    def _calculate_oven_temperature(self, initial_temp, target_temperatures, kp, ki, kd, dt, num_steps):
+    def _calculate_oven_temperature(self, initial_temp, target_temperatures, kp, ki, kd, dt, num_steps, thermal_inertia_coeff):
         current_temperature = initial_temp
         oven_temperatures = [current_temperature]
 
@@ -85,11 +85,15 @@ class PIDSimulations(QObject):
             power = kp * error + ki * integral_error + kd * derivative_error
             power = max(0, min(power, 100))  # Ограничение мощности
 
-            # Расчет температуры
+            # Расчет тока и теплового потока
             amperage = (MAINS_VOLTAGE / OVEN_RESISTANCE) * power / 100
             heat_flow = amperage * MAINS_VOLTAGE * dt
-            new_temperature = get_dt(heat_flow, power, current_temperature, A1, A2, A3, B1, B2, K_COEFF)
+
+            # Учет тепловой инерции
+            desired_temperature_change = get_dt(heat_flow, power, current_temperature, A1, A2, A3, B1, B2, K_COEFF)
+            new_temperature = current_temperature + (desired_temperature_change - current_temperature) * thermal_inertia_coeff
             oven_temperatures.append(new_temperature)
+
             current_temperature = new_temperature
             previous_error = error
 
@@ -117,6 +121,7 @@ class PIDSimulations(QObject):
         kp = data.get("kp", 0)
         ki = data.get("ki", 0)
         kd = data.get("kd", 0)
+        thermal_inertia_coeff = data.get("thermal_inertia_coeff", 1)
 
         dt = 1
         num_steps = int(sim_time / dt)
@@ -124,7 +129,7 @@ class PIDSimulations(QObject):
         target_temperatures = self._calculate_target_curve(initial_temp, final_temp, heating_rate, num_steps)
 
         oven_temperatures, errors = self._calculate_oven_temperature(
-            initial_temp, target_temperatures, kp, ki, kd, dt, num_steps
+            initial_temp, target_temperatures, kp, ki, kd, dt, num_steps, thermal_inertia_coeff
         )
 
         self.simulations_data_signal.emit({"x": time_array, "y": oven_temperatures, "label": "oven_temperature"})

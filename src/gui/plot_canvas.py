@@ -55,7 +55,6 @@ class PlotCanvas(QWidget):
         self.plot(x, y, label)
 
     def plot(self, x, y, label="default"):
-        """Отображает линию на графике с указанной меткой."""
         if label in self.lines:
             # Обновляем данные существующей линии, если она уже есть
             self.lines[label].set_data(x, y)
@@ -63,13 +62,12 @@ class PlotCanvas(QWidget):
             # Создаем новую линию и добавляем ее в словарь
             (line,) = self.axes.plot(x, y, label=label)
             self.lines[label] = line
+
+        # Добавляем подписи осей
+        self.axes.set_xlabel("Время (с)")  # Подпись оси абсцисс
+        self.axes.set_ylabel("Температура (°C)")  # Подпись оси ординат
+
         self.axes.relim()
         self.axes.autoscale_view()
         self.axes.legend()  # Добавляем легенду
-        self.canvas.draw()
-
-    def clear_plot(self):
-        """Очищает все линии с графика."""
-        self.axes.cla()  # Очищаем текущие оси
-        self.lines.clear()  # Очищаем словарь линий
         self.canvas.draw()

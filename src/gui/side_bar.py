@@ -59,18 +59,21 @@ class SimulationParametersWidget(QWidget):
         self.initial_temp_input = QLineEdit()
         self.final_temp_input = QLineEdit()
         self.sim_time_input = QLineEdit()
+        self.thermal_inertia_coeff_input = QLineEdit()
 
         # Устанавливаем значения по умолчанию
         self.initial_temp_input.setText("25")
         self.final_temp_input.setText("250")
         self.heating_rate.setText("10")
         self.sim_time_input.setText("500")
+        self.thermal_inertia_coeff_input.setText("0.5")
 
         # Добавляем поля ввода на форму с соответствующими метками
         layout.addRow("Начальная температура:", self.initial_temp_input)
         layout.addRow("Уставка:", self.final_temp_input)
         layout.addRow("Скорость нагрева:", self.heating_rate)
         layout.addRow("Время симуляции:", self.sim_time_input)
+        layout.addRow("Коэффициент инерции:", self.thermal_inertia_coeff_input)
 
         # Устанавливаем форму как основной макет виджета
         self.setLayout(layout)
@@ -81,7 +84,8 @@ class SimulationParametersWidget(QWidget):
             initial_temp = float(self.initial_temp_input.text())
             final_temp = float(self.final_temp_input.text())
             sim_time = int(self.sim_time_input.text())
-            return power, initial_temp, final_temp, sim_time
+            thermal_inertia_coeff = float(self.thermal_inertia_coeff_input.text())
+            return power, initial_temp, final_temp, sim_time, thermal_inertia_coeff
         except ValueError:
             return None  # Возвращаем None при ошибке преобразования
 
@@ -166,6 +170,7 @@ class SideBar(QWidget):
             "initial_temp": sim_params_values[1],
             "final_temp": sim_params_values[2],
             "sim_time": sim_params_values[3],
+            "thermal_inertia_coeff": sim_params_values[4],
         }
 
         # Излучаем сигнал с данными
@@ -181,5 +186,6 @@ class SideBar(QWidget):
             self.sim_params_widget.initial_temp_input,
             self.sim_params_widget.final_temp_input,
             self.sim_params_widget.sim_time_input,
+            self.sim_params_widget.thermal_inertia_coeff_input,
         ]
         return all(input_field.text().strip() for input_field in inputs)
