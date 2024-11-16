@@ -42,7 +42,7 @@ def get_dt(heat_flow, power, t, a1, a2, a3, b1, b2):
     t_t_loss = (a1 * t**2 + a2 * t + a3) / quartz_heat_capacity(t)
     power_t_loss = (b1 * power + b2) / quartz_heat_capacity(t)
     dt = t_increase - cooling_t_loss(t) - t_t_loss - power_t_loss
-    return t + dt
+    return t + (dt / AGG_TIME)
 
 
 class PIDSimulations(QObject):
@@ -57,9 +57,10 @@ class PIDSimulations(QObject):
         oven_temperatures = [current_temperature]
 
         amperage = (MAINS_VOLTAGE / OVEN_RESISTANCE) * power / 100
-        heat_flow = amperage * MAINS_VOLTAGE * AGG_TIME
+        heat_flow = amperage * MAINS_VOLTAGE * AGG_TIME  # тепловой поток на 5 секунд
 
         for _ in range(sim_time):
+            # новая температура через 1 секнду
             new_temperature = get_dt(heat_flow, power, current_temperature, A1, A2, A3, B1, B2)
             oven_temperatures.append(new_temperature)
             current_temperature = new_temperature
@@ -68,7 +69,7 @@ class PIDSimulations(QObject):
     def _calculate_target_curve(self, initial_temp, final_temperature, heating_rate, sim_time):
         current_target_temp = initial_temp
         target_temperatures = [current_target_temp]
-        increment = heating_rate / 60 * AGG_TIME  # Increment step for target temperature
+        increment = heating_rate / 60  # в градусах на секунду
 
         for _ in range(sim_time):
             current_target_temp = min(current_target_temp + increment, final_temperature)
@@ -87,9 +88,9 @@ class PIDSimulations(QObject):
         # задаемся мощностью для отладки
         power = 20
 
-        time_array = list(range(sim_time + 1))
-        oven_temperatures = self._calculate_oven_curve(initial_temp, power, sim_time)
+        time_array = list(range(sim_time + 1))  # в секндах
         target_temperatures = self._calculate_target_curve(initial_temp, final_temperature, heating_rate, sim_time)
+        oven_temperatures = self._calculate_oven_curve(initial_temp, power, sim_time)
 
         # Посылаем сигнал для температуры печи
         self.simulations_data_signal.emit({"x": time_array, "y": oven_temperatures, "label": "oven_temperatures"})
