@@ -37,7 +37,7 @@ jobs:
       # 5. Build the executable with PyInstaller
       - name: Build executable with PyInstaller
         run: |
-          poetry run pyinstaller --onefile --name pid-sim src/gui/main.py
+          poetry run pyinstaller --onefile --name pid-sim src/gui/main.py --collect-all PyQt6
 
       # 6. Verify the build (optional)
       - name: Verify executable
