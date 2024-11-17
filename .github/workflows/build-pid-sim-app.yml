@@ -46,11 +46,17 @@ jobs:
             exit 1
           }
 
-      # 7. Create Release and Upload EXE
+      # 7. List dist directory for debugging
+      - name: List dist directory
+        run: |
+          dir dist
+        shell: cmd
+
+      # 8. Create Release and Upload EXE
       - name: Create Release and Upload EXE
         uses: ncipollo/release-action@v1
         with:
-          tag: "v0.0.${{ github.run_number }}"
+          tag: "release-${{ github.run_number }}"
           name: "Release ${{ github.run_number }}"
           files: "dist/pid-sim.exe"
         env:
