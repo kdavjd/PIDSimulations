@@ -17,6 +17,7 @@ OVEN_RESISTANCE = 19  # Ом - сопротивление печи
 MAINS_VOLTAGE = 230  # Вольт - напряжение в сети
 PIPE_MASS = 1.04  # Масса печи в Кг
 AGG_TIME = 5  # Время агрегации в секундах
+DT = 1  # Период симуляции в секундах
 
 
 def cooling_t_loss(temperature):
@@ -74,6 +75,10 @@ class PIDSimulations(QObject):
         integral_error = initial_error * dt
         previous_error = initial_error
 
+        # Инициализируем очередь для учета тепловой инерции
+        inertia_steps = max(1, int(thermal_inertia_coeff / dt))
+        contributions_queue = [0.0] * inertia_steps
+
         for time_step in range(num_steps):
             target_temperature = target_temperatures[time_step]
             error = target_temperature - current_temperature
@@ -87,11 +92,26 @@ class PIDSimulations(QObject):
 
             # Расчет тока и теплового потока
             amperage = (MAINS_VOLTAGE / OVEN_RESISTANCE) * power / 100
-            heat_flow = amperage * MAINS_VOLTAGE * dt
+            heat_flow = amperage * MAINS_VOLTAGE * AGG_TIME  # Модель расчитана на период дискретизации в 5 секунд
 
-            # Учет тепловой инерции
+            # Вычисление новой температуры через 5 секунд
             desired_temperature_change = get_dt(heat_flow, power, current_temperature, A1, A2, A3, B1, B2, K_COEFF)
-            new_temperature = current_temperature + (desired_temperature_change - current_temperature) * thermal_inertia_coeff
+
+            # Вычисление изменения температуры через 1 секунду
+            delta_t = (desired_temperature_change - current_temperature) / AGG_TIME
+            # Размазываем изменение во времени. Пересчет на инерциальность печи
+            per_step_contribution = delta_t / inertia_steps
+
+            # Обновление очереди тепловой инерции
+            if len(contributions_queue) >= inertia_steps:
+                contributions_queue.pop(0)
+            contributions_queue.append(per_step_contribution)
+
+            # Вычисление суммарного изменения температуры
+            total_delta = sum(contributions_queue)
+
+            # Обновление текущей температуры
+            new_temperature = current_temperature + total_delta
             oven_temperatures.append(new_temperature)
 
             current_temperature = new_temperature
@@ -102,7 +122,7 @@ class PIDSimulations(QObject):
     def _calculate_target_curve(self, initial_temp, final_temperature, heating_rate, sim_time):
         current_target_temp = initial_temp
         target_temperatures = [current_target_temp]
-        increment = heating_rate / 60  # в градусах на секунду
+        increment = heating_rate / 60 * DT  # в градусах на секунду
 
         for _ in range(sim_time):
             current_target_temp = min(current_target_temp + increment, final_temperature)
@@ -123,13 +143,12 @@ class PIDSimulations(QObject):
         kd = data.get("kd", 0)
         thermal_inertia_coeff = data.get("thermal_inertia_coeff", 1)
 
-        dt = 1
-        num_steps = int(sim_time / dt)
-        time_array = [i * dt for i in range(num_steps + 1)]
+        num_steps = int(sim_time / DT)
+        time_array = [i * DT for i in range(num_steps + 1)]
         target_temperatures = self._calculate_target_curve(initial_temp, final_temp, heating_rate, num_steps)
 
         oven_temperatures, errors = self._calculate_oven_temperature(
-            initial_temp, target_temperatures, kp, ki, kd, dt, num_steps, thermal_inertia_coeff
+            initial_temp, target_temperatures, kp, ki, kd, DT, num_steps, thermal_inertia_coeff
         )
 
         self.simulations_data_signal.emit({"x": time_array, "y": oven_temperatures, "label": "oven_temperature"})

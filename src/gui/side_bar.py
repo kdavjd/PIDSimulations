@@ -1,4 +1,5 @@
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QIntValidator
 from PyQt6.QtWidgets import (
     QFormLayout,
     QGroupBox,
@@ -28,6 +29,11 @@ class PIDCoefficientsWidget(QWidget):
         self.kp_input.setText("1")
         self.ki_input.setText("1")
         self.kd_input.setText("1")
+
+        # Добавляем подсказки о том, что означает каждый коэффициент
+        self.kp_input.setPlaceholderText("Пропорциональный коэффициент")
+        self.ki_input.setPlaceholderText("Интегральный коэффициент")
+        self.kd_input.setPlaceholderText("Дифференциальный коэффициент")
 
         # Добавляем поля ввода на форму с соответствующими метками
         layout.addRow("Kp:", self.kp_input)
@@ -66,14 +72,26 @@ class SimulationParametersWidget(QWidget):
         self.final_temp_input.setText("250")
         self.heating_rate.setText("10")
         self.sim_time_input.setText("500")
-        self.thermal_inertia_coeff_input.setText("0.5")
+        self.thermal_inertia_coeff_input.setText("1")
+
+        # Устанавливаем валидаторы для целочисленных полей
+        int_validator = QIntValidator()
+        self.sim_time_input.setValidator(int_validator)
+        self.thermal_inertia_coeff_input.setValidator(int_validator)
+
+        # Добавляем подсказки о единицах измерения
+        self.initial_temp_input.setPlaceholderText("°C")
+        self.final_temp_input.setPlaceholderText("°C")
+        self.heating_rate.setPlaceholderText("°C/мин")
+        self.sim_time_input.setPlaceholderText("сек")
+        self.thermal_inertia_coeff_input.setPlaceholderText("Безразмерный коэффициент")
 
         # Добавляем поля ввода на форму с соответствующими метками
-        layout.addRow("Начальная температура:", self.initial_temp_input)
-        layout.addRow("Уставка:", self.final_temp_input)
-        layout.addRow("Скорость нагрева:", self.heating_rate)
-        layout.addRow("Время симуляции:", self.sim_time_input)
-        layout.addRow("Коэффициент инерции:", self.thermal_inertia_coeff_input)
+        layout.addRow("Начальная температура (°C):", self.initial_temp_input)
+        layout.addRow("Уставка (°C):", self.final_temp_input)
+        layout.addRow("Скорость нагрева (°C/мин):", self.heating_rate)
+        layout.addRow("Время симуляции (сек):", self.sim_time_input)
+        layout.addRow("Коэффициент инерции (целое число):", self.thermal_inertia_coeff_input)
 
         # Устанавливаем форму как основной макет виджета
         self.setLayout(layout)
@@ -84,7 +102,7 @@ class SimulationParametersWidget(QWidget):
             initial_temp = float(self.initial_temp_input.text())
             final_temp = float(self.final_temp_input.text())
             sim_time = int(self.sim_time_input.text())
-            thermal_inertia_coeff = float(self.thermal_inertia_coeff_input.text())
+            thermal_inertia_coeff = int(self.thermal_inertia_coeff_input.text())
             return power, initial_temp, final_temp, sim_time, thermal_inertia_coeff
         except ValueError:
             return None  # Возвращаем None при ошибке преобразования
@@ -155,10 +173,20 @@ class SideBar(QWidget):
             QMessageBox.warning(self, "Ошибка", "Некорректные значения коэффициентов PID.")
             return
 
+        # Проверяем, что хотя бы один коэффициент PID больше нуля
+        if pid_values[0] == 0 and pid_values[1] == 0 and pid_values[2] == 0:
+            QMessageBox.warning(self, "Ошибка", "Хотя бы один коэффициент регулирования должен быть больше нуля.")
+            return
+
         # Получаем значения параметров симуляции
         sim_params_values = self.sim_params_widget.get_values()
         if sim_params_values is None:
             QMessageBox.warning(self, "Ошибка", "Некорректные значения параметров симуляции.")
+            return
+
+        # Проверяем, что уставка не меньше начальной температуры
+        if sim_params_values[2] < sim_params_values[1]:
+            QMessageBox.warning(self, "Ошибка", "Уставка температуры не должна быть меньше начальной температуры.")
             return
 
         # Формируем словарь с собранными данными
