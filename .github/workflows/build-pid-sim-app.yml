@@ -27,9 +27,13 @@ jobs:
       run: |
         pip install pyinstaller
 
+    - name: Display directory structure (для отладки)
+      run: |
+        dir /s /b
+
     - name: Build executable with PyInstaller
       run: |
-        pyinstaller --onefile --name pid-sim gui/main.py
+        pyinstaller --onefile --name pid-sim src/gui/main.py
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3
