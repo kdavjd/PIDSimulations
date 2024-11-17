@@ -1,42 +1,68 @@
-name: Build EXE
+name: Build and Release EXE
 
 on:
   push:
     branches: [ "main" ]
 
 jobs:
-  build:
-
+  build-and-release:
     runs-on: windows-latest
 
     steps:
+    # 1. Checkout the repository
     - uses: actions/checkout@v4
 
+    # 2. Set up Python
     - name: Set up Python
       uses: actions/setup-python@v3
       with:
         python-version: "3.12"
 
+    # 3. Install dependencies using Poetry
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install poetry
         poetry install
 
+    # 4. Install PyInstaller
     - name: Install PyInstaller
       run: |
         pip install pyinstaller
 
-    - name: Display directory structure (для отладки)
-      run: Get-ChildItem -Recurse
-      shell: powershell
-
+    # 5. Build the executable with PyInstaller
     - name: Build executable with PyInstaller
       run: |
         pyinstaller --onefile --name pid-sim src/gui/main.py
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v3
+    # 6. Verify the build (опционально)
+    - name: Verify executable
+      run: |
+        if (!(Test-Path "dist\pid-sim.exe")) {
+          Write-Error "Executable not found!"
+          exit 1
+        }
+
+    # 7. Create a GitHub Release
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        name: pid-sim.exe
-        path: dist\pid-sim.exe
+        tag_name: "release-${{ github.run_number }}"
+        release_name: "Release ${{ github.run_number }}"
+        body: "Автоматически сгенерированный релиз."
+        draft: false
+        prerelease: false
+
+    # 8. Upload the executable as a release asset
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/pid-sim.exe
+        asset_name: pid-sim.exe
+        asset_content_type: application/octet-stream
