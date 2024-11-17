@@ -46,13 +46,20 @@ jobs:
             exit 1
           }
 
-      # 7. List dist directory for debugging
+      # 7. Print working directory (для отладки)
+      - name: Print working directory
+        run: |
+          echo "Current directory: %cd%"
+          dir
+        shell: cmd
+
+      # 8. List dist directory for debugging (для отладки)
       - name: List dist directory
         run: |
           dir dist
         shell: cmd
 
-      # 8. Create Release and Upload EXE
+      # 9. Create Release and Upload EXE
       - name: Create Release and Upload EXE
         uses: ncipollo/release-action@v1
         with:
