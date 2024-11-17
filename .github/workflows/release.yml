@@ -39,21 +39,6 @@ jobs:
         run: |
           poetry run pyinstaller src/gui/main.py --onefile --name main.exe
 
-
-      # 6. Verify the build (optional)
-      - name: Verify executable
-        run: |
-          if (!(Test-Path "dist\pid-sim.exe")) {
-            Write-Error "Executable not found!"
-            exit 1
-          }
-
-      # 7. Display directory structure for debugging (optional)
-      - name: Display directory structure
-        run: |
-          dir dist
-        shell: cmd
-
       # 8. Create Release and Upload EXE
       - name: Create Release and Upload EXE
         uses: softprops/action-gh-release@v2
