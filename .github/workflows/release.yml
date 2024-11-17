@@ -1,4 +1,4 @@
-name: Build and Release EXE
+name: Release EXE
 
 on:
   push:
@@ -13,7 +13,8 @@ jobs:
 
     steps:
       # 1. Checkout the repository
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       # 2. Set up Python
       - name: Set up Python
@@ -36,7 +37,7 @@ jobs:
       # 5. Build the executable with PyInstaller
       - name: Build executable with PyInstaller
         run: |
-          pyinstaller --onefile --name pid-sim src/gui/main.py
+          poetry run pyinstaller --onefile --name pid-sim src/gui/main.py
 
       # 6. Verify the build (optional)
       - name: Verify executable
@@ -46,25 +47,18 @@ jobs:
             exit 1
           }
 
-      # 7. Print working directory (для отладки)
-      - name: Print working directory
-        run: |
-          echo "Current directory: %cd%"
-          dir
-        shell: cmd
-
-      # 8. List dist directory for debugging (для отладки)
-      - name: List dist directory
+      # 7. Display directory structure for debugging (optional)
+      - name: Display directory structure
         run: |
           dir dist
         shell: cmd
 
-      # 9. Create Release and Upload EXE
+      # 8. Create Release and Upload EXE
       - name: Create Release and Upload EXE
-        uses: ncipollo/release-action@v1
+        uses: softprops/action-gh-release@v2
         with:
-          tag: "release-${{ github.run_number }}"
           name: "Release ${{ github.run_number }}"
+          tag_name: "release-${{ github.run_number }}"
           files: "dist/pid-sim.exe"
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
