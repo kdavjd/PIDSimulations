@@ -28,8 +28,8 @@ jobs:
         pip install pyinstaller
 
     - name: Display directory structure (для отладки)
-      run: |
-        dir /s /b
+      run: Get-ChildItem -Recurse
+      shell: powershell
 
     - name: Build executable with PyInstaller
       run: |
