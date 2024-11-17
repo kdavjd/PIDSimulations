@@ -5,9 +5,8 @@ from PyQt6.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QSplitter, Q
 
 from core.logger_config import setup_logger
 from core.simulatons import PIDSimulations
-
-from .plot_canvas import PlotCanvas
-from .side_bar import SideBar
+from gui.plot_canvas import PlotCanvas
+from gui.side_bar import SideBar
 
 MIN_WIDTH_SIDEBAR = 80
 MIN_WIDTH_PLOTCANVAS = 300
