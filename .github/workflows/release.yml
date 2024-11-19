@@ -3,6 +3,7 @@ name: Release EXE
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:  # Добавьте это событие для ручного запуска
 
 permissions:
   contents: write
