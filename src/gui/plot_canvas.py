@@ -82,6 +82,7 @@ class PlotCanvas(QWidget):
             
             # Создаем симуляцию
             from core.simulatons import PIDSimulations
+
             simulation = PIDSimulations(
                 kp=data["kp"],
                 ki=data["ki"],
