@@ -16,10 +16,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Set up Python 3.12
+    - name: Set up Python 3.8
       uses: actions/setup-python@v5
       with:
-        python-version: '3.12'
+        python-version: '3.8'
     
     - name: Install dependencies
       run: |
@@ -31,7 +31,7 @@ jobs:
     - name: Build with PyInstaller
       run: |
         $env:PYTHONPATH = "$env:GITHUB_WORKSPACE\src;$env:PYTHONPATH"
-        python -m PyInstaller --name=pid-sim --onefile --windowed --add-data "src/*;src" --hidden-import PyQt6.QtCore --hidden-import PyQt6.QtGui --hidden-import PyQt6.QtWidgets --hidden-import numpy --hidden-import matplotlib --hidden-import core --hidden-import gui src/gui/main.py
+        python -m PyInstaller --name=pid-sim --onefile --windowed --add-data "src/*;src" --hidden-import PyQt6.QtCore --hidden-import PyQt6.QtGui --hidden-import PyQt6.QtWidgets --hidden-import numpy --hidden-import matplotlib --hidden-import core --hidden-import gui src/gui/main_fixed.py
     
     - name: Create Release
       id: create_release
