@@ -60,9 +60,51 @@ def get_dt(heat_flow, power, t, a1, a2, a3, b1, b2, k_coeff):
 class PIDSimulations(QObject):
     simulations_data_signal = pyqtSignal(dict)
 
-    def __init__(self):
+    def __init__(self, kp, ki, kd, initial_temp, final_temp, heating_rate, sim_time, thermal_inertia_coeff):
         super().__init__()
         self.logger = logging.getLogger("PIDSimulationsLogger")
+        
+        # Сохраняем параметры
+        self.kp = float(kp)
+        self.ki = float(ki)
+        self.kd = float(kd)
+        self.initial_temp = float(initial_temp)
+        self.final_temp = float(final_temp)
+        self.heating_rate = float(heating_rate)
+        self.sim_time = float(sim_time)
+        self.thermal_inertia_coeff = int(thermal_inertia_coeff)
+
+    def run_simulation(self):
+        try:
+            # Рассчитываем количество шагов симуляции
+            dt = 0.1  # шаг времени в секундах
+            num_steps = int(self.sim_time / dt)
+            
+            # Создаем массив целевых температур
+            target_temps = self._calculate_target_curve(
+                self.initial_temp,
+                self.final_temp,
+                self.heating_rate,
+                num_steps
+            )
+            
+            # Запускаем симуляцию
+            temperatures, errors = self._calculate_oven_temperature(
+                self.initial_temp,
+                target_temps,
+                self.kp,
+                self.ki,
+                self.kd,
+                dt,
+                num_steps,
+                self.thermal_inertia_coeff
+            )
+            
+            return temperatures, target_temps
+            
+        except Exception as e:
+            self.logger.error(f"Error in run_simulation: {str(e)}", exc_info=True)
+            raise
 
     def _calculate_oven_temperature(self, initial_temp, target_temperatures, kp, ki, kd, dt, num_steps, thermal_inertia_coeff):
         current_temperature = initial_temp
@@ -128,6 +170,38 @@ class PIDSimulations(QObject):
             current_target_temp = min(current_target_temp + increment, final_temperature)
             target_temperatures.append(current_target_temp)
         return target_temperatures
+
+    def run_simulation(self):
+        try:
+            # Рассчитываем количество шагов симуляции
+            dt = 0.1  # шаг времени в секундах
+            num_steps = int(self.sim_time / dt)
+            
+            # Создаем массив целевых температур
+            target_temps = self._calculate_target_curve(
+                self.initial_temp,
+                self.final_temp,
+                self.heating_rate,
+                num_steps
+            )
+            
+            # Запускаем симуляцию
+            temperatures, errors = self._calculate_oven_temperature(
+                self.initial_temp,
+                target_temps,
+                self.kp,
+                self.ki,
+                self.kd,
+                dt,
+                num_steps,
+                self.thermal_inertia_coeff
+            )
+            
+            return temperatures, target_temps
+            
+        except Exception as e:
+            self.logger.error(f"Error in run_simulation: {str(e)}", exc_info=True)
+            raise
 
     @pyqtSlot(dict)
     def simulate(self, data: dict):
