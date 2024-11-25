@@ -50,7 +50,7 @@ class PIDCoefficientsWidget(QWidget):
             kd = float(self.kd_input.text())
             return kp, ki, kd
         except ValueError:
-            return None  # Возвращаем None при ошибке преобразования
+            return None
 
 
 class SimulationParametersWidget(QWidget):
@@ -98,14 +98,14 @@ class SimulationParametersWidget(QWidget):
 
     def get_values(self):
         try:
-            power = float(self.heating_rate.text())
             initial_temp = float(self.initial_temp_input.text())
             final_temp = float(self.final_temp_input.text())
+            heating_rate = float(self.heating_rate.text())
             sim_time = int(self.sim_time_input.text())
             thermal_inertia_coeff = int(self.thermal_inertia_coeff_input.text())
-            return power, initial_temp, final_temp, sim_time, thermal_inertia_coeff
+            return initial_temp, final_temp, heating_rate, sim_time, thermal_inertia_coeff
         except ValueError:
-            return None  # Возвращаем None при ошибке преобразования
+            return None
 
 
 class SimulateButtonWidget(QWidget):
@@ -127,14 +127,14 @@ class SimulateButtonWidget(QWidget):
 
 
 class SideBar(QWidget):
-    # Определяем сигнал, который будет излучать собранные данные
+    # Сигналы для коммуникации с другими виджетами
     simulation_data_signal = pyqtSignal(dict)
+    simulation_started = pyqtSignal()  # Сигнал о начале симуляции
+    simulation_stopped = pyqtSignal()  # Сигнал об окончании симуляции
 
-    def __init__(self, main_window):
+    def __init__(self, min_width):
         super().__init__()
-
-        # Ссылка на основное окно для вызова его методов
-        self.main_window = main_window
+        self.setMinimumWidth(min_width)
 
         # Основной вертикальный макет для боковой панели
         side_layout = QVBoxLayout(self)
@@ -162,58 +162,67 @@ class SideBar(QWidget):
         side_layout.addWidget(self.sim_button_widget)
 
     def on_simulate(self):
-        # Проверяем заполненность всех полей
+        """
+        Обработчик нажатия кнопки симуляции.
+        Собирает данные из всех полей ввода и отправляет их через сигнал.
+        """
         if not self.check_inputs_filled():
-            QMessageBox.warning(self, "Ошибка", "Все поля должны быть заполнены.")
             return
 
-        # Получаем значения коэффициентов PID
-        pid_values = self.pid_widget.get_pid_coeffs_values()
-        if pid_values is None:
-            QMessageBox.warning(self, "Ошибка", "Некорректные значения коэффициентов PID.")
+        # Получаем коэффициенты PID
+        pid_coeffs = self.pid_widget.get_pid_coeffs_values()
+        if pid_coeffs is None:
+            QMessageBox.warning(self, "Ошибка", "Проверьте правильность ввода коэффициентов PID")
             return
 
-        # Проверяем, что хотя бы один коэффициент PID больше нуля
-        if pid_values[0] == 0 and pid_values[1] == 0 and pid_values[2] == 0:
-            QMessageBox.warning(self, "Ошибка", "Хотя бы один коэффициент регулирования должен быть больше нуля.")
+        # Получаем параметры симуляции
+        sim_params = self.sim_params_widget.get_values()
+        if sim_params is None:
+            QMessageBox.warning(self, "Ошибка", "Проверьте правильность ввода параметров симуляции")
             return
 
-        # Получаем значения параметров симуляции
-        sim_params_values = self.sim_params_widget.get_values()
-        if sim_params_values is None:
-            QMessageBox.warning(self, "Ошибка", "Некорректные значения параметров симуляции.")
-            return
+        # Распаковываем значения
+        kp, ki, kd = pid_coeffs
+        initial_temp, final_temp, heating_rate, sim_time, thermal_inertia_coeff = sim_params
 
-        # Проверяем, что уставка не меньше начальной температуры
-        if sim_params_values[2] < sim_params_values[1]:
-            QMessageBox.warning(self, "Ошибка", "Уставка температуры не должна быть меньше начальной температуры.")
-            return
-
-        # Формируем словарь с собранными данными
-        data = {
-            "kp": pid_values[0],
-            "ki": pid_values[1],
-            "kd": pid_values[2],
-            "heating_rate": sim_params_values[0],
-            "initial_temp": sim_params_values[1],
-            "final_temp": sim_params_values[2],
-            "sim_time": sim_params_values[3],
-            "thermal_inertia_coeff": sim_params_values[4],
+        # Создаем словарь с данными симуляции
+        simulation_data = {
+            "kp": kp,
+            "ki": ki,
+            "kd": kd,
+            "initial_temp": initial_temp,
+            "final_temp": final_temp,
+            "heating_rate": heating_rate,
+            "sim_time": sim_time,
+            "thermal_inertia_coeff": thermal_inertia_coeff
         }
 
-        # Излучаем сигнал с данными
-        self.simulation_data_signal.emit(data)
+        # Отправляем сигнал о начале симуляции
+        self.simulation_started.emit()
+        # Отправляем данные
+        self.simulation_data_signal.emit(simulation_data)
 
     def check_inputs_filled(self):
-        """Проверяет, заполнены ли все поля ввода."""
-        inputs = [
-            self.pid_widget.kp_input,
-            self.pid_widget.ki_input,
-            self.pid_widget.kd_input,
-            self.sim_params_widget.heating_rate,
+        """
+        Проверяет, заполнены ли все поля ввода.
+        """
+        # Проверяем поля PID
+        for input_field in [self.pid_widget.kp_input, self.pid_widget.ki_input, self.pid_widget.kd_input]:
+            if not input_field.text():
+                QMessageBox.warning(self, "Ошибка", "Заполните все коэффициенты PID")
+                return False
+
+        # Проверяем поля параметров симуляции
+        sim_fields = [
             self.sim_params_widget.initial_temp_input,
             self.sim_params_widget.final_temp_input,
+            self.sim_params_widget.heating_rate,
             self.sim_params_widget.sim_time_input,
-            self.sim_params_widget.thermal_inertia_coeff_input,
+            self.sim_params_widget.thermal_inertia_coeff_input
         ]
-        return all(input_field.text().strip() for input_field in inputs)
+        for field in sim_fields:
+            if not field.text():
+                QMessageBox.warning(self, "Ошибка", "Заполните все параметры симуляции")
+                return False
+
+        return True
