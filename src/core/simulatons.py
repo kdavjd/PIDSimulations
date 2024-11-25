@@ -171,6 +171,38 @@ class PIDSimulations(QObject):
             target_temperatures.append(current_target_temp)
         return target_temperatures
 
+    def run_simulation(self):
+        try:
+            # Рассчитываем количество шагов симуляции
+            dt = 0.1  # шаг времени в секундах
+            num_steps = int(self.sim_time / dt)
+            
+            # Создаем массив целевых температур
+            target_temps = self._calculate_target_curve(
+                self.initial_temp,
+                self.final_temp,
+                self.heating_rate,
+                num_steps
+            )
+            
+            # Запускаем симуляцию
+            temperatures, errors = self._calculate_oven_temperature(
+                self.initial_temp,
+                target_temps,
+                self.kp,
+                self.ki,
+                self.kd,
+                dt,
+                num_steps,
+                self.thermal_inertia_coeff
+            )
+            
+            return temperatures, target_temps
+            
+        except Exception as e:
+            self.logger.error(f"Error in run_simulation: {str(e)}", exc_info=True)
+            raise
+
     @pyqtSlot(dict)
     def simulate(self, data: dict):
         self.logger.info(f"Received data for simulation: {data}")

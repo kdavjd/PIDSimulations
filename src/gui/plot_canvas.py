@@ -66,58 +66,41 @@ class PlotCanvas(QWidget):
 
     @pyqtSlot(dict)
     def request_slot(self, data: dict):
-        try:
-            if not self.simulation_running:
-                self.logger.warning("Received data while simulation is not running")
-                return
-            
-            self.logger.debug(f"Received data: {data}")
-            
-            # Проверяем наличие необходимых данных
-            required_keys = ["kp", "ki", "kd", "initial_temp", "final_temp", "heating_rate", "sim_time", "thermal_inertia_coeff"]
-            for key in required_keys:
-                if key not in data:
-                    self.logger.error(f"Missing required key in data: {key}")
-                    return
-            
-            # Создаем симуляцию
-            from core.simulatons import PIDSimulations
-
-            simulation = PIDSimulations(
-                kp=data["kp"],
-                ki=data["ki"],
-                kd=data["kd"],
-                initial_temp=data["initial_temp"],
-                final_temp=data["final_temp"],
-                heating_rate=data["heating_rate"],
-                sim_time=data["sim_time"],
-                thermal_inertia_coeff=data["thermal_inertia_coeff"]
-            )
-            
-            # Получаем данные симуляции и время
-            sim_time = float(data["sim_time"])
-            dt = 0.1  # шаг времени в секундах
-            num_steps = int(sim_time / dt)
-            time_points = [i * dt for i in range(num_steps + 1)]
-            
-            # Очищаем график перед новой симуляцией
-            self.axes.clear()
-            self.lines.clear()
-            
-            # Получаем температуры и целевые значения
-            temperatures, target_temps = simulation.run_simulation()
-            
-            # Вычисляем ошибку
-            errors = [target - actual for target, actual in zip(target_temps, temperatures)]
-            
-            # Отображаем все три кривые
-            self.plot(time_points, temperatures, "Температура")
-            self.plot(time_points, target_temps, "Уставка")
-            self.plot(time_points, errors, "Ошибка")
-            
-        except Exception as e:
-            self.logger.error(f"Error in request_slot: {str(e)}", exc_info=True)
-            QMessageBox.critical(self, "Ошибка", f"Произошла ошибка при симуляции: {str(e)}")
+        self.logger.debug(f"Received data: {data}")
+        
+        # Создаем симуляцию
+        from core.simulatons import PIDSimulations
+        simulation = PIDSimulations(
+            kp=data["kp"],
+            ki=data["ki"],
+            kd=data["kd"],
+            initial_temp=data["initial_temp"],
+            final_temp=data["final_temp"],
+            heating_rate=data["heating_rate"],
+            sim_time=data["sim_time"],
+            thermal_inertia_coeff=data["thermal_inertia_coeff"]
+        )
+        
+        # Получаем данные симуляции и время
+        sim_time = float(data["sim_time"])
+        dt = 0.1  # шаг времени в секундах
+        num_steps = int(sim_time / dt)
+        time_points = [i * dt for i in range(num_steps + 1)]
+        
+        # Очищаем график перед новой симуляцией
+        self.axes.clear()
+        self.lines.clear()
+        
+        # Получаем температуры и целевые значения
+        temperatures, target_temps = simulation.run_simulation()
+        
+        # Вычисляем ошибку
+        errors = [target - actual for target, actual in zip(target_temps, temperatures)]
+        
+        # Отображаем все три кривые
+        self.plot(time_points, temperatures, "Температура")
+        self.plot(time_points, target_temps, "Уставка")
+        self.plot(time_points, errors, "Ошибка")
 
     def plot(self, x, y, label="default"):
         try:
