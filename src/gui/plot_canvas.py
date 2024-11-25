@@ -81,7 +81,8 @@ class PlotCanvas(QWidget):
                     return
             
             # Создаем симуляцию
-            from src.core.simulatons import PIDSimulations
+            from core.simulatons import PIDSimulations
+
             simulation = PIDSimulations(
                 kp=data["kp"],
                 ki=data["ki"],
@@ -93,11 +94,26 @@ class PlotCanvas(QWidget):
                 thermal_inertia_coeff=data["thermal_inertia_coeff"]
             )
             
-            # Получаем данные симуляции
-            time_points, temperatures = simulation.run_simulation()
+            # Получаем данные симуляции и время
+            sim_time = float(data["sim_time"])
+            dt = 0.1  # шаг времени в секундах
+            num_steps = int(sim_time / dt)
+            time_points = [i * dt for i in range(num_steps + 1)]
             
-            # Отображаем данные на графике
-            self.plot(time_points, temperatures, "Temperature")
+            # Очищаем график перед новой симуляцией
+            self.axes.clear()
+            self.lines.clear()
+            
+            # Получаем температуры и целевые значения
+            temperatures, target_temps = simulation.run_simulation()
+            
+            # Вычисляем ошибку
+            errors = [target - actual for target, actual in zip(target_temps, temperatures)]
+            
+            # Отображаем все три кривые
+            self.plot(time_points, temperatures, "Температура")
+            self.plot(time_points, target_temps, "Уставка")
+            self.plot(time_points, errors, "Ошибка")
             
         except Exception as e:
             self.logger.error(f"Error in request_slot: {str(e)}", exc_info=True)

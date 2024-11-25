@@ -1,71 +1,43 @@
-name: Release EXE
+name: Build and Release
 
 on:
   push:
-    branches: [ "main" ]
-  workflow_dispatch:  # Добавьте это событие для ручного запуска
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
+  packages: read
 
 jobs:
-  build-and-release:
+  build:
     runs-on: windows-latest
-
+    
     steps:
-      # 1. Checkout the repository
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # 2. Set up Python
-      - name: Set up Python
-        uses: actions/setup-python@v3
-        with:
-          python-version: "3.12"
-
-      # 3. Install dependencies using Poetry
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install poetry
-          poetry install
-      
-      # 4. Set PYTHONPATH and Install Pyqt
-      - name: Set PYTHONPATH and Install Pyqt
-        run: |
-          set PYTHONPATH=%GITHUB_WORKSPACE%\PIDSimulations
-          pip install pyqt6
-      
-      # 4. Install PyInstaller
-      - name: Install PyInstaller
-        run: |
-          pip install pyinstaller
-
-      # 5. Build the executable with PyInstaller
-      - name: Build executable with PyInstaller
-        run: |
-          pyinstaller src/gui/main.py --onefile --name pid-sim.exe --paths "C:\\hostedtoolcache\\windows\\Python\\3.12.7\\x64\\Lib\\site-packages\\PyQt6\\Qt6\\plugins;PyQt6/Qt6/plugins" --clean
-
-      # 6. Verify the build (optional)
-      - name: Verify executable
-        run: |
-          if (!(Test-Path "dist\pid-sim.exe")) {
-            Write-Error "Executable not found!"
-            exit 1
-          }
-            
-      # 7. Display directory structure for debugging (optional)
-      - name: Display directory structure
-        run: |
-          dir dist
-        shell: cmd
-
-      # 8. Create Release and Upload EXE
-      - name: Create Release and Upload EXE
-        uses: softprops/action-gh-release@v2
-        with:
-          name: "Release ${{ github.run_number }}"
-          tag_name: "release-${{ github.run_number }}"
-          files: "dist/pid-sim.exe"
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install PyQt6==6.7.1
+        pip install PyInstaller==6.11.1
+        pip install numpy matplotlib
+    
+    - name: Build with PyInstaller
+      run: |
+        $env:PYTHONPATH = "$env:GITHUB_WORKSPACE\src;$env:PYTHONPATH"
+        python -m PyInstaller --name=pid-sim --onefile --windowed --add-data "src/*;src" --hidden-import PyQt6.QtCore --hidden-import PyQt6.QtGui --hidden-import PyQt6.QtWidgets --hidden-import numpy --hidden-import matplotlib --hidden-import core --hidden-import gui src/gui/main.py
+    
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: dist/pid-sim.exe
+        name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false

@@ -1,12 +1,19 @@
 import sys
+import os
+
+# Добавляем путь к корневой директории проекта
+current_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.dirname(os.path.dirname(current_dir))
+if src_dir not in sys.path:
+    sys.path.append(src_dir)
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QSplitter, QWidget
 
-from core.logger_config import setup_logger
-from core.simulatons import PIDSimulations
-from gui.plot_canvas import PlotCanvas
-from gui.side_bar import SideBar
+from src.core.logger_config import setup_logger
+from src.core.simulatons import PIDSimulations
+from src.gui.plot_canvas import PlotCanvas
+from src.gui.side_bar import SideBar
 
 MIN_WIDTH_SIDEBAR = 80
 MIN_WIDTH_PLOTCANVAS = 300
@@ -19,37 +26,40 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Симуляция ПИД-регулятора")
+        self.setMinimumWidth(COMPONENTS_MIN_WIDTH)
         self.setMinimumHeight(MIN_HEIGHT_MAINWINDOW)
-        self.setMinimumWidth(COMPONENTS_MIN_WIDTH + SPLITTER_WIDTH)
-        self.init_ui()
 
-    def init_ui(self):
+        # Create the main widget and layout
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
-        main_layout = QHBoxLayout(main_widget)
+        layout = QHBoxLayout(main_widget)
 
-        self.splitter = QSplitter(Qt.Orientation.Horizontal)
-        main_layout.addWidget(self.splitter)
+        # Create and setup the splitter
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setHandleWidth(SPLITTER_WIDTH)
 
-        self.sidebar = SideBar(self)
-        self.sidebar.setMinimumWidth(MIN_WIDTH_SIDEBAR)
-        self.splitter.addWidget(self.sidebar)
+        # Create sidebar and plot canvas
+        self.side_bar = SideBar(MIN_WIDTH_SIDEBAR)
+        self.plot_canvas = PlotCanvas()  # Убираем передачу ширины
+        self.plot_canvas.setMinimumWidth(MIN_WIDTH_PLOTCANVAS)  # Устанавливаем минимальную ширину через метод
 
-        self.plot_canvas = PlotCanvas(self)
-        self.plot_canvas.setMinimumWidth(MIN_WIDTH_PLOTCANVAS)
-        self.splitter.addWidget(self.plot_canvas)
+        # Add widgets to splitter
+        splitter.addWidget(self.side_bar)
+        splitter.addWidget(self.plot_canvas)
+
+        # Add splitter to layout
+        layout.addWidget(splitter)
+
+        # Connect signals
+        self.side_bar.simulation_started.connect(self.plot_canvas.start_simulation)
+        self.side_bar.simulation_stopped.connect(self.plot_canvas.stop_simulation)
+        self.side_bar.simulation_data_signal.connect(self.plot_canvas.request_slot)
 
 
 def main():
-    setup_logger()
-
     app = QApplication(sys.argv)
+    setup_logger()
     window = MainWindow()
-    simulations = PIDSimulations()
-
-    window.sidebar.simulation_data_signal.connect(simulations.simulate)
-    simulations.simulations_data_signal.connect(window.plot_canvas.request_slot)
-
     window.show()
     sys.exit(app.exec())
 
