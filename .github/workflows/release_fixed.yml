@@ -14,10 +14,10 @@ jobs:
     runs-on: windows-latest
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     
     - name: Set up Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: '3.8'
     
@@ -33,27 +33,15 @@ jobs:
         $env:PYTHONPATH = "$env:GITHUB_WORKSPACE\src;$env:PYTHONPATH"
         python -m PyInstaller --name=pid-sim --windowed --add-data "src/*;src" --hidden-import PyQt6.QtCore --hidden-import PyQt6.QtGui --hidden-import PyQt6.QtWidgets --hidden-import numpy --hidden-import matplotlib --hidden-import core --hidden-import gui src/gui/main_fixed.py
     
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-    
     - name: Zip Release Files
       run: |
         Compress-Archive -Path dist/pid-sim/* -DestinationPath pid-sim-windows.zip
     
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Create Release
+      id: create_release
+      uses: softprops/action-gh-release@v2
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./pid-sim-windows.zip
-        asset_name: pid-sim-windows.zip
-        asset_content_type: application/zip
+        files: pid-sim-windows.zip
+        name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false
