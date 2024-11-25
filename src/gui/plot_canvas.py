@@ -1,6 +1,5 @@
 import logging
 from typing import Dict, Optional
-from PyQt6.QtWidgets import QMessageBox
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
@@ -8,7 +7,7 @@ from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as Navigation
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from PyQt6.QtCore import pyqtSlot
-from PyQt6.QtWidgets import QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QMessageBox, QVBoxLayout, QWidget
 
 CANVAS_BIG_SIZE = 12
 CANVAS_MEDIUM_SIZE = 10
@@ -21,7 +20,7 @@ class PlotCanvas(QWidget):
         self.logger = logging.getLogger("PIDSimulationsLogger")
 
         # Настройка стиля matplotlib
-        plt.style.use(['seaborn-v0_8-darkgrid'])  # Используем встроенный стиль вместо science
+        plt.style.use(["seaborn-v0_8-darkgrid"])  # Используем встроенный стиль вместо science
         plt.rc("font", size=CANVAS_MEDIUM_SIZE)  # Основной размер шрифта
         plt.rc("axes", titlesize=CANVAS_BIG_SIZE)  # Размер шрифта заголовков осей
         plt.rc("axes", labelsize=CANVAS_MEDIUM_SIZE)  # Размер шрифта меток осей
@@ -70,16 +69,16 @@ class PlotCanvas(QWidget):
             if not self.simulation_running:
                 self.logger.warning("Received data while simulation is not running")
                 return
-            
+
             self.logger.debug(f"Received data: {data}")
-            
+
             # Проверяем наличие необходимых данных
             required_keys = ["kp", "ki", "kd", "initial_temp", "final_temp", "heating_rate", "sim_time", "thermal_inertia_coeff"]
             for key in required_keys:
                 if key not in data:
                     self.logger.error(f"Missing required key in data: {key}")
                     return
-            
+
             # Создаем симуляцию
             from core.simulatons import PIDSimulations
 
@@ -91,30 +90,30 @@ class PlotCanvas(QWidget):
                 final_temp=data["final_temp"],
                 heating_rate=data["heating_rate"],
                 sim_time=data["sim_time"],
-                thermal_inertia_coeff=data["thermal_inertia_coeff"]
+                thermal_inertia_coeff=data["thermal_inertia_coeff"],
             )
-            
+
             # Получаем данные симуляции и время
             sim_time = float(data["sim_time"])
-            dt = 0.1  # шаг времени в секундах
+            dt = 1  # шаг времени в секундах
             num_steps = int(sim_time / dt)
             time_points = [i * dt for i in range(num_steps + 1)]
-            
+
             # Очищаем график перед новой симуляцией
             self.axes.clear()
             self.lines.clear()
-            
+
             # Получаем температуры и целевые значения
             temperatures, target_temps = simulation.run_simulation()
-            
+
             # Вычисляем ошибку
             errors = [target - actual for target, actual in zip(target_temps, temperatures)]
-            
+
             # Отображаем все три кривые
             self.plot(time_points, temperatures, "Температура")
             self.plot(time_points, target_temps, "Уставка")
             self.plot(time_points, errors, "Ошибка")
-            
+
         except Exception as e:
             self.logger.error(f"Error in request_slot: {str(e)}", exc_info=True)
             QMessageBox.critical(self, "Ошибка", f"Произошла ошибка при симуляции: {str(e)}")
@@ -146,7 +145,7 @@ class PlotCanvas(QWidget):
             self.axes.autoscale_view()
             self.axes.legend()
             self.canvas.draw()
-            
+
         except Exception as e:
             self.logger.error(f"Error in plot method: {str(e)}", exc_info=True)
             QMessageBox.critical(self, "Ошибка", f"Произошла ошибка при отрисовке графика: {str(e)}")

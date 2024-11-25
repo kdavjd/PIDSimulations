@@ -3,7 +3,7 @@
     "configurations": [
         {
             "name": "Запуск PyQt6 через модуль",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "gui.main",
             "env": {

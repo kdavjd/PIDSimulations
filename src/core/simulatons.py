@@ -63,7 +63,7 @@ class PIDSimulations(QObject):
     def __init__(self, kp, ki, kd, initial_temp, final_temp, heating_rate, sim_time, thermal_inertia_coeff):
         super().__init__()
         self.logger = logging.getLogger("PIDSimulationsLogger")
-        
+
         # Сохраняем параметры
         self.kp = float(kp)
         self.ki = float(ki)
@@ -77,31 +77,19 @@ class PIDSimulations(QObject):
     def run_simulation(self):
         try:
             # Рассчитываем количество шагов симуляции
-            dt = 0.1  # шаг времени в секундах
+            dt = 1  # шаг времени в секундах
             num_steps = int(self.sim_time / dt)
-            
+
             # Создаем массив целевых температур
-            target_temps = self._calculate_target_curve(
-                self.initial_temp,
-                self.final_temp,
-                self.heating_rate,
-                num_steps
-            )
-            
+            target_temps = self._calculate_target_curve(self.initial_temp, self.final_temp, self.heating_rate, num_steps)
+
             # Запускаем симуляцию
             temperatures, errors = self._calculate_oven_temperature(
-                self.initial_temp,
-                target_temps,
-                self.kp,
-                self.ki,
-                self.kd,
-                dt,
-                num_steps,
-                self.thermal_inertia_coeff
+                self.initial_temp, target_temps, self.kp, self.ki, self.kd, dt, num_steps, self.thermal_inertia_coeff
             )
-            
+
             return temperatures, target_temps
-            
+
         except Exception as e:
             self.logger.error(f"Error in run_simulation: {str(e)}", exc_info=True)
             raise
