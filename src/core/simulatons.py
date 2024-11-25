@@ -81,15 +81,12 @@ class PIDSimulations(QObject):
             num_steps = int(self.sim_time / dt)
             
             # Создаем массив целевых температур
-            time_points = [i * dt for i in range(num_steps + 1)]
-            target_temps = []
-            
-            for t in time_points:
-                target_temp = min(
-                    self.final_temp,
-                    self.initial_temp + (self.heating_rate / 60) * t  # переводим скорость из °C/мин в °C/сек
-                )
-                target_temps.append(target_temp)
+            target_temps = self._calculate_target_curve(
+                self.initial_temp,
+                self.final_temp,
+                self.heating_rate,
+                num_steps
+            )
             
             # Запускаем симуляцию
             temperatures, errors = self._calculate_oven_temperature(
@@ -103,7 +100,7 @@ class PIDSimulations(QObject):
                 self.thermal_inertia_coeff
             )
             
-            return time_points, temperatures
+            return temperatures, target_temps
             
         except Exception as e:
             self.logger.error(f"Error in run_simulation: {str(e)}", exc_info=True)
