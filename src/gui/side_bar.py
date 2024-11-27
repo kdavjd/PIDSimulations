@@ -128,9 +128,7 @@ class SimulateButtonWidget(QWidget):
 
 class SideBar(QWidget):
     # Сигналы для коммуникации с другими виджетами
-    simulation_data_signal = pyqtSignal(dict)
-    simulation_started = pyqtSignal()  # Сигнал о начале симуляции
-    simulation_stopped = pyqtSignal()  # Сигнал об окончании симуляции
+    simulation_coeffs_signal = pyqtSignal(dict)
 
     def __init__(self, min_width):
         super().__init__()
@@ -194,13 +192,11 @@ class SideBar(QWidget):
             "final_temp": final_temp,
             "heating_rate": heating_rate,
             "sim_time": sim_time,
-            "thermal_inertia_coeff": thermal_inertia_coeff
+            "thermal_inertia_coeff": thermal_inertia_coeff,
         }
 
-        # Отправляем сигнал о начале симуляции
-        self.simulation_started.emit()
         # Отправляем данные
-        self.simulation_data_signal.emit(simulation_data)
+        self.simulation_coeffs_signal.emit(simulation_data)
 
     def check_inputs_filled(self):
         """
@@ -218,7 +214,7 @@ class SideBar(QWidget):
             self.sim_params_widget.final_temp_input,
             self.sim_params_widget.heating_rate,
             self.sim_params_widget.sim_time_input,
-            self.sim_params_widget.thermal_inertia_coeff_input
+            self.sim_params_widget.thermal_inertia_coeff_input,
         ]
         for field in sim_fields:
             if not field.text():

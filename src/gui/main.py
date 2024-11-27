@@ -1,18 +1,20 @@
 import os
 import sys
 
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QSplitter, QWidget
+
+from src.core.logger_config import setup_logger
+from src.core.simulatons import PIDSimulations
+from src.gui.plot_canvas import PlotCanvas
+from src.gui.side_bar import SideBar
+
 # Добавляем путь к корневой директории проекта
 current_dir = os.path.dirname(os.path.abspath(__file__))
 src_dir = os.path.dirname(os.path.dirname(current_dir))
 if src_dir not in sys.path:
     sys.path.append(src_dir)
 
-from PyQt6.QtCore import Qt  # noqa: E402
-from PyQt6.QtWidgets import QApplication, QHBoxLayout, QMainWindow, QSplitter, QWidget  # noqa: E402
-
-from src.core.logger_config import setup_logger  # noqa: E402
-from src.gui.plot_canvas import PlotCanvas  # noqa: E402
-from src.gui.side_bar import SideBar  # noqa: E402
 
 MIN_WIDTH_SIDEBAR = 80
 MIN_WIDTH_PLOTCANVAS = 300
@@ -49,16 +51,16 @@ class MainWindow(QMainWindow):
         # Add splitter to layout
         layout.addWidget(splitter)
 
-        # Connect signals
-        self.side_bar.simulation_started.connect(self.plot_canvas.start_simulation)
-        self.side_bar.simulation_stopped.connect(self.plot_canvas.stop_simulation)
-        self.side_bar.simulation_data_signal.connect(self.plot_canvas.request_slot)
-
 
 def main():
     app = QApplication(sys.argv)
     setup_logger()
     window = MainWindow()
+    simulations = PIDSimulations()
+
+    window.side_bar.simulation_coeffs_signal.connect(simulations.request_slot)
+    simulations.simulations_data_signal.connect(window.plot_canvas.plot_data)
+
     window.show()
     sys.exit(app.exec())
 

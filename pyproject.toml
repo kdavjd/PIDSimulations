@@ -13,7 +13,7 @@ packages = [
 pid-sim = "gui.main:main"
 
 [tool.poetry.dependencies]
-python = ">=3.12"
+python = ">=3.12,<3.13"
 ipykernel = "^6.29.5"
 pandas = "^2.2.3"
 matplotlib = "^3.9.2"
@@ -26,6 +26,9 @@ pre-commit = "^4.0.1"
 
 [tool.poetry.dev-dependencies]
 ruff = "^0.7.3"
+
+[tool.poetry.group.dev.dependencies]
+pyinstaller = "^6.11.1"
 
 [tool.ruff]
 src = ["src"]
