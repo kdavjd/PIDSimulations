@@ -7,7 +7,9 @@ from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as Navigation
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from PyQt6.QtCore import pyqtSlot
-from PyQt6.QtWidgets import QMessageBox, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QVBoxLayout, QWidget
+
+from core.simulatons import log_exceptions
 
 CANVAS_BIG_SIZE = 12
 CANVAS_MEDIUM_SIZE = 10
@@ -47,33 +49,29 @@ class PlotCanvas(QWidget):
         self.setLayout(layout)
 
     @pyqtSlot(dict)
+    @log_exceptions
     def plot_data(self, params: dict):
-        try:
-            x = params.get("x")
-            y = params.get("y")
-            label = params.get("label")
-            self.logger.debug(f"Plotting data with label: {label}")
-            self.logger.debug(f"x shape: {len(x)}, y shape: {len(y)}")
+        x = params.get("x")
+        y = params.get("y")
+        label = params.get("label")
+        self.logger.debug(f"Plotting data with label: {label}")
+        self.logger.debug(f"x shape: {len(x)}, y shape: {len(y)}")
 
-            if label in self.lines:
-                # Обновляем данные существующей линии
-                self.logger.debug("Updating existing line")
-                self.lines[label].set_data(x, y)
-            else:
-                # Создаем новую линию
-                self.logger.debug("Creating new line")
-                (line,) = self.axes.plot(x, y, label=label)
-                self.lines[label] = line
+        if label in self.lines:
+            # Обновляем данные существующей линии
+            self.logger.debug("Updating existing line")
+            self.lines[label].set_data(x, y)
+        else:
+            # Создаем новую линию
+            self.logger.debug("Creating new line")
+            (line,) = self.axes.plot(x, y, label=label)
+            self.lines[label] = line
 
-            # Добавляем подписи осей
-            self.axes.set_xlabel("Время (с)")
-            self.axes.set_ylabel("Температура (°C)")
+        # Добавляем подписи осей
+        self.axes.set_xlabel("Время (с)")
+        self.axes.set_ylabel("Температура (°C)")
 
-            self.axes.relim()
-            self.axes.autoscale_view()
-            self.axes.legend()
-            self.canvas.draw()
-
-        except Exception as e:
-            self.logger.error(f"Error in plot method: {str(e)}", exc_info=True)
-            QMessageBox.critical(self, "Ошибка", f"Произошла ошибка при отрисовке графика: {str(e)}")
+        self.axes.relim()
+        self.axes.autoscale_view()
+        self.axes.legend()
+        self.canvas.draw()

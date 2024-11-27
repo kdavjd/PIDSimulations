@@ -20,6 +20,19 @@ AGG_TIME = 5  # Время агрегации в секундах
 DT = 1  # Период симуляции в секундах
 
 
+def log_exceptions(func):
+    def wrapper(*args, **kwargs):
+        self = args[0]
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            method_name = func.__name__
+            self.logger.error(f"Error in {method_name}: {str(e)}", exc_info=True)
+            raise
+
+    return wrapper
+
+
 def cooling_t_loss(temperature):
     return (C1 * temperature**2 + C2) * -1
 
@@ -74,78 +87,72 @@ class PIDSimulations(QObject):
         self.sim_time = 0
         self.thermal_inertia_coeff = 0
 
+    @log_exceptions
     def _calculate_oven_temperature(self, initial_temp, target_temperatures, kp, ki, kd, dt, num_steps, thermal_inertia_coeff):
-        try:
-            current_temperature = initial_temp
-            oven_temperatures = [current_temperature]
+        current_temperature = initial_temp
+        oven_temperatures = [current_temperature]
 
-            initial_target_temp = target_temperatures[0]
-            initial_error = initial_target_temp - current_temperature
-            errors = [initial_error]
+        initial_target_temp = target_temperatures[0]
+        initial_error = initial_target_temp - current_temperature
+        errors = [initial_error]
 
-            integral_error = initial_error * dt
-            previous_error = initial_error
+        integral_error = initial_error * dt
+        previous_error = initial_error
 
-            # Инициализируем очередь для учета тепловой инерции
-            inertia_steps = max(1, int(thermal_inertia_coeff / dt))
-            contributions_queue = [0.0] * inertia_steps
+        # Инициализируем очередь для учета тепловой инерции
+        inertia_steps = max(1, int(thermal_inertia_coeff / dt))
+        contributions_queue = [0.0] * inertia_steps
 
-            for time_step in range(num_steps):
-                target_temperature = target_temperatures[time_step]
-                error = target_temperature - current_temperature
-                errors.append(error)
+        for time_step in range(num_steps):
+            target_temperature = target_temperatures[time_step]
+            error = target_temperature - current_temperature
+            errors.append(error)
 
-                # PID контроллер
-                integral_error += error * dt
-                derivative_error = (error - previous_error) / dt
-                power = kp * error + ki * integral_error + kd * derivative_error
-                power = max(0, min(power, 100))  # Ограничение мощности
+            # PID контроллер
+            integral_error += error * dt
+            derivative_error = (error - previous_error) / dt
+            power = kp * error + ki * integral_error + kd * derivative_error
+            power = max(0, min(power, 100))  # Ограничение мощности
 
-                # Расчет тока и теплового потока
-                amperage = (MAINS_VOLTAGE / OVEN_RESISTANCE) * power / 100
-                heat_flow = amperage * MAINS_VOLTAGE * AGG_TIME  # Модель расчитана на период дискретизации в 5 секунд
+            # Расчет тока и теплового потока
+            amperage = (MAINS_VOLTAGE / OVEN_RESISTANCE) * power / 100
+            heat_flow = amperage * MAINS_VOLTAGE * AGG_TIME  # Модель расчитана на период дискретизации в 5 секунд
 
-                # Вычисление новой температуры через 5 секунд
-                desired_temperature_change = get_dt(heat_flow, power, current_temperature, A1, A2, A3, B1, B2, K_COEFF)
+            # Вычисление новой температуры через 5 секунд
+            desired_temperature_change = get_dt(heat_flow, power, current_temperature, A1, A2, A3, B1, B2, K_COEFF)
 
-                # Вычисление изменения температуры через 1 секунду
-                delta_t = (desired_temperature_change - current_temperature) / AGG_TIME
-                # Размазываем изменение во времени. Пересчет на инерциальность печи
-                per_step_contribution = delta_t / inertia_steps
+            # Вычисление изменения температуры через 1 секунду
+            delta_t = (desired_temperature_change - current_temperature) / AGG_TIME
+            # Размазываем изменение во времени. Пересчет на инерциальность печи
+            per_step_contribution = delta_t / inertia_steps
 
-                # Обновление очереди тепловой инерции
-                if len(contributions_queue) >= inertia_steps:
-                    contributions_queue.pop(0)
-                contributions_queue.append(per_step_contribution)
+            # Обновление очереди тепловой инерции
+            if len(contributions_queue) >= inertia_steps:
+                contributions_queue.pop(0)
+            contributions_queue.append(per_step_contribution)
 
-                # Вычисление суммарного изменения температуры
-                total_delta = sum(contributions_queue)
+            # Вычисление суммарного изменения температуры
+            total_delta = sum(contributions_queue)
 
-                # Обновление текущей температуры
-                new_temperature = current_temperature + total_delta
-                oven_temperatures.append(new_temperature)
+            # Обновление текущей температуры
+            new_temperature = current_temperature + total_delta
+            oven_temperatures.append(new_temperature)
 
-                current_temperature = new_temperature
-                previous_error = error
+            current_temperature = new_temperature
+            previous_error = error
 
-            return oven_temperatures, errors
-        except Exception as e:
-            self.logger.error(f"Error in _calculate_oven_temperature: {str(e)}", exc_info=True)
-            raise
+        return oven_temperatures, errors
 
+    @log_exceptions
     def _calculate_target_curve(self, initial_temp, final_temperature, heating_rate, sim_time):
-        try:
-            current_target_temp = initial_temp
-            target_temperatures = [current_target_temp]
-            increment = heating_rate / 60 * DT  # в градусах на секунду
+        current_target_temp = initial_temp
+        target_temperatures = [current_target_temp]
+        increment = heating_rate / 60 * DT  # в градусах на секунду
 
-            for _ in range(sim_time):
-                current_target_temp = min(current_target_temp + increment, final_temperature)
-                target_temperatures.append(current_target_temp)
-            return target_temperatures
-        except Exception as e:
-            self.logger.error(f"Error in _calculate_target_curve: {str(e)}", exc_info=True)
-            raise
+        for _ in range(sim_time):
+            current_target_temp = min(current_target_temp + increment, final_temperature)
+            target_temperatures.append(current_target_temp)
+        return target_temperatures
 
     @pyqtSlot(dict)
     def request_slot(self, data: dict):
